@@ -1,0 +1,171 @@
+<div class="hero">
+    <h1>从「啁啾」开始理解 FMCW</h1>
+    <p>FMCW 雷达发射 <b>频率随时间线性变化</b> 的连续波（Chirp），接收回波后与发射信号做混频，得到频率与目标距离成正比的 <b>拍频信号 (Beat Signal)</b>。这是毫米波雷达（如 TI IWR系列、Infineon BGT60）的核心技术。</p>
+    <div class="pill-row">
+        <span class="pill">📈 线性调频</span>
+        <span class="pill">🎯 距离·速度·角度</span>
+        <span class="pill">⚡ 低成本低功耗</span>
+        <span class="pill">🚗 车载 · 无人机 · 工业</span>
+    </div>
+</div>
+
+<div class="grid">
+    <div class="card">
+        <h3>Chirp 信号波形</h3>
+        <p>调整参数，观察频率 vs. 时间 与 时域波形：</p>
+        <div class="controls">
+            <div class="ctrl"><label>起始频率 f<sub>start</sub> <b id="v_f0">77.0 GHz</b></label>
+                <input type="range" id="s_f0" min="76" max="81" step="0.1" value="77"></div>
+            <div class="ctrl"><label>带宽 B <b id="v_B">4.0 GHz</b></label>
+                <input type="range" id="s_B" min="0.5" max="6" step="0.1" value="4"></div>
+            <div class="ctrl"><label>Chirp 时长 T<sub>c</sub> <b id="v_Tc">40 μs</b></label>
+                <input type="range" id="s_Tc" min="10" max="100" step="1" value="40"></div>
+        </div>
+        <canvas id="c_chirp_f" width="700" height="220"></canvas>
+        <div class="legend"><i style="background:var(--cyan)"></i>瞬时频率 f(t) = f₀ + S·t</div>
+        <canvas id="c_chirp_t" width="700" height="160" style="margin-top:10px"></canvas>
+        <div class="legend"><i style="background:var(--green)"></i>时域信号 cos(2π(f₀t + ½St²))</div>
+    </div>
+
+    <div class="card">
+        <h3>核心公式速查</h3>
+        <p><span class="badge">Chirp 斜率</span>频率随时间线性增加：</p>
+        <div class="formula"><span class="sym">S</span> <span class="eq">=</span> B / T<sub>c</sub></div>
+
+        <p><span class="badge">发射信号</span></p>
+        <div class="formula">s<sub>tx</sub>(t) = A · cos( 2π( f<sub>0</sub>·t + ½·S·t² ) )</div>
+
+        <p><span class="badge">回波延迟</span>目标在距离 R 处：</p>
+        <div class="formula">τ <span class="eq">=</span> 2R / c</div>
+
+        <p><span class="badge">拍频信号</span>混频后得到的中频 (IF) 频率：</p>
+        <div class="formula">f<sub>b</sub> <span class="eq">=</span> S · τ <span class="eq">=</span> 2·S·R / c <span class="eq">=</span> 2·B·R / (c·T<sub>c</sub>)</div>
+
+        <p><span class="badge">距离反推</span></p>
+        <div class="formula">R <span class="eq">=</span> f<sub>b</sub> · c · T<sub>c</sub> / (2·B)</div>
+
+        <div class="note">💡 <b>关键思想</b>：拍频 f<sub>b</sub> 与目标距离 R 成 <u>线性正比</u>。对 IF 信号做 FFT，频谱峰值的位置就对应目标的距离。</div>
+    </div>
+</div>
+
+<div class="card" style="margin-top:18px">
+    <h3>FMCW 系统框图</h3>
+    <canvas id="c_block" width="1200" height="260"></canvas>
+    <div class="legend">
+        <i style="background:var(--cyan)"></i>发射链路 TX
+        <i style="background:var(--orange)"></i>接收链路 RX
+        <i style="background:var(--green)"></i>中频 IF / ADC
+        <i style="background:var(--violet)"></i>DSP / FFT
+    </div>
+</div>
+
+<script>
+function renderIntro(){
+    const f0 = +$('s_f0').value;
+    const B  = +$('s_B').value;
+    const Tc = +$('s_Tc').value;
+    $('v_f0').textContent = f0.toFixed(1)+' GHz';
+    $('v_B').textContent = B.toFixed(1)+' GHz';
+    $('v_Tc').textContent = Tc+' μs';
+
+    let {ctx,w,h} = fitCanvas($('c_chirp_f'));
+    ctx.clearRect(0,0,w,h);
+    const pad={l:50,r:20,t:20,b:30};
+    drawAxes(ctx,w,h,pad,'t (μs)','f (GHz)');
+    ctx.strokeStyle='#172043'; ctx.beginPath();
+    for(let i=1;i<=4;i++){
+        const y=pad.t+i*(h-pad.t-pad.b)/5;
+        ctx.moveTo(pad.l,y); ctx.lineTo(w-pad.r,y);
+    }
+    for(let i=1;i<=4;i++){
+        const x=pad.l+i*(w-pad.l-pad.r)/5;
+        ctx.moveTo(x,pad.t); ctx.lineTo(x,h-pad.b);
+    }
+    ctx.stroke();
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    const pw=w-pad.l-pad.r, ph=h-pad.t-pad.b;
+    const fmax = f0+B*1.1, fmin=f0-B*0.1;
+    const yOf = f => pad.t + (1-(f-fmin)/(fmax-fmin))*ph;
+    ctx.moveTo(pad.l, yOf(f0));
+    ctx.lineTo(pad.l+pw, yOf(f0+B));
+    ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='12px sans-serif';
+    ctx.fillText('f₀='+f0.toFixed(1)+' GHz', pad.l+4, yOf(f0)-6);
+    ctx.fillText('f₀+B='+(f0+B).toFixed(1)+' GHz', pad.l+pw-130, yOf(f0+B)-6);
+    ctx.fillText('T₍c₎='+Tc+' μs', pad.l+pw-70, h-pad.b-8);
+    ctx.fillText('斜率 S = B/T₍c₎ = '+(B*1e9/(Tc*1e-6)/1e12).toFixed(2)+' THz/s', pad.l+10, pad.t+16);
+
+    for(let i=0;i<=5;i++){
+        const x=pad.l+i*pw/5, t=(i*Tc/5);
+        ctx.fillStyle='#8a97c7'; ctx.fillText(t.toFixed(0), x-6, h-pad.b+14);
+    }
+
+    ({ctx,w,h} = fitCanvas($('c_chirp_t')));
+    ctx.clearRect(0,0,w,h);
+    drawAxes(ctx,w,h,pad,'t','A');
+    ctx.strokeStyle='#4ade80'; ctx.lineWidth=1.2;
+    ctx.beginPath();
+    const N=1600;
+    for(let i=0;i<N;i++){
+        const tn = i/N;
+        const t = tn*Tc*1e-6;
+        const phi = 2*Math.PI*(f0*1e9*t + 0.5*(B*1e9/(Tc*1e-6))*t*t);
+        const v = Math.cos(phi);
+        const x = pad.l + tn*pw;
+        const y = (h-pad.t-pad.b)/2 + pad.t - v*(h-pad.t-pad.b)/2*0.9;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#8a97c7'; ctx.font='11px sans-serif';
+    ctx.fillText('→ 频率越来越密（chirp up）', pad.l+pw-180, pad.t+14);
+}
+
+function renderBlock(){
+    const {ctx,w,h} = fitCanvas($('c_block'));
+    ctx.clearRect(0,0,w,h);
+    const blocks=[
+        {x:30,  y:60,  w:110,h:60,c:'#22d3ee',t:'波形发生器',s:'Chirp 控制'},
+        {x:180, y:60,  w:110,h:60,c:'#22d3ee',t:'上变频 / PA',s:'f₀, 倍频'},
+        {x:330, y:60,  w:110,h:60,c:'#22d3ee',t:'TX 天线',s:'发射 Chirp'},
+        {x:500, y:150, w:140,h:60,c:'#facc15',t:'目标（R,v,θ）',s:'反射 · 延迟 τ'},
+        {x:700, y:60,  w:110,h:60,c:'#fb923c',t:'RX 天线',s:'接收回波'},
+        {x:850, y:60,  w:110,h:60,c:'#fb923c',t:'LNA + 混频器',s:'与 TX 相乘'},
+        {x:1000,y:60,  w:110,h:60,c:'#4ade80',t:'IF · ADC',s:'拍频 f_b'},
+        {x:1000,y:170, w:110,h:60,c:'#a78bfa',t:'DSP · 3D-FFT',s:'R · v · θ'}
+    ];
+    blocks.forEach(b=>{
+        ctx.fillStyle=b.c+'22'; ctx.strokeStyle=b.c; ctx.lineWidth=1.5;
+        roundRect(ctx,b.x,b.y,b.w,b.h,8); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=b.c; ctx.font='bold 13px sans-serif';
+        ctx.fillText(b.t, b.x+10, b.y+26);
+        ctx.fillStyle='#cdd6f4'; ctx.font='11px sans-serif';
+        ctx.fillText(b.s, b.x+10, b.y+46);
+    });
+    ctx.strokeStyle='#8a97c7'; ctx.lineWidth=1.5;
+    const arrow=(x1,y1,x2,y2,col)=>{
+        ctx.strokeStyle=col||'#8a97c7';
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        const a=Math.atan2(y2-y1,x2-x1);
+        ctx.beginPath();
+        ctx.moveTo(x2,y2);
+        ctx.lineTo(x2-8*Math.cos(a-0.4), y2-8*Math.sin(a-0.4));
+        ctx.lineTo(x2-8*Math.cos(a+0.4), y2-8*Math.sin(a+0.4));
+        ctx.closePath(); ctx.fillStyle=col||'#8a97c7'; ctx.fill();
+    };
+    arrow(140,90,180,90,'#22d3ee');
+    arrow(290,90,330,90,'#22d3ee');
+    arrow(440,90,520,150,'#22d3ee');
+    arrow(620,150,700,90,'#fb923c');
+    arrow(810,90,850,90,'#fb923c');
+    arrow(960,90,1000,90,'#4ade80');
+    arrow(1055,120,1055,170,'#a78bfa');
+    ctx.setLineDash([4,4]); ctx.strokeStyle='#f472b6';
+    ctx.beginPath(); ctx.moveTo(385,120); ctx.bezierCurveTo(500,220,650,220,755,120); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f472b6'; ctx.font='12px sans-serif';
+    ctx.fillText('无线信道', 540, 220);
+}
+
+['s_f0','s_B','s_Tc'].forEach(id=>$(id).oninput=renderIntro);
+</script>
