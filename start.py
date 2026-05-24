@@ -11,6 +11,8 @@ import os
 import time
 import signal
 import webbrowser
+import argparse
+import re
 
 
 def get_project_root():
@@ -43,7 +45,7 @@ def install_dependencies(project_root):
         print("⚠️  依赖安装可能不完整，但继续尝试启动")
 
 
-def start_backend(project_root):
+def start_backend(project_root, backend_port):
     """启动后端服务"""
     print("启动后端服务...")
     backend_dir = os.path.join(project_root, "backend")
@@ -53,22 +55,45 @@ def start_backend(project_root):
         print(f"❌ 错误: 未找到后端文件 {main_py}")
         sys.exit(1)
     
+    env = os.environ.copy()
+    env["FMCW_BACKEND_PORT"] = str(backend_port)
+    
     return subprocess.Popen([
         sys.executable, main_py
-    ], cwd=backend_dir)
+    ], cwd=backend_dir, env=env)
 
 
-def start_frontend(project_root):
+def start_frontend(project_root, frontend_port, backend_port):
     """启动前端服务"""
     print("启动前端服务...")
     frontend_dir = os.path.join(project_root, "frontend")
+    index_html = os.path.join(frontend_dir, "index.html")
     
     if not os.path.isdir(frontend_dir):
         print(f"❌ 错误: 未找到前端目录 {frontend_dir}")
         sys.exit(1)
     
+    # 修改 index.html，添加 meta 标签配置 API 地址
+    if os.path.exists(index_html):
+        with open(index_html, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        api_base = f"http://localhost:{backend_port}"
+        meta_tag = f'<meta name="fmcw-api-base" content="{api_base}">'
+        
+        # 检查是否已有这个 meta 标签
+        if 'name="fmcw-api-base"' in content:
+            # 更新现有标签
+            content = re.sub(r'<meta name="fmcw-api-base" content="[^"]*">', meta_tag, content)
+        elif '<head>' in content:
+            # 在 <head> 标签中添加
+            content = content.replace('<head>', f'<head>\n    {meta_tag}')
+        
+        with open(index_html, "w", encoding="utf-8") as f:
+            f.write(content)
+    
     return subprocess.Popen([
-        sys.executable, "-m", "http.server", "8765"
+        sys.executable, "-m", "http.server", str(frontend_port)
     ], cwd=frontend_dir)
 
 
@@ -83,12 +108,21 @@ def main():
     # 检查 Python
     check_python()
     
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="FMCW Radar Interactive Lab 启动脚本")
+    parser.add_argument("--backend-port", type=int, default=8000, help="后端服务端口 (默认: 8000)")
+    parser.add_argument("--frontend-port", type=int, default=8765, help="前端服务端口 (默认: 8765)")
+    args = parser.parse_args()
+    
+    backend_port = args.backend_port
+    frontend_port = args.frontend_port
+    
     # 安装依赖
     install_dependencies(project_root)
     
     print("\n🌐 正在启动服务...")
-    print("后端服务: http://localhost:8000")
-    print("前端页面: http://localhost:8765/index.html")
+    print(f"后端服务: http://localhost:{backend_port}")
+    print(f"前端页面: http://localhost:{frontend_port}/index.html")
     print("\n按 Ctrl+C 停止服务")
     print("=========================================\n")
     
@@ -112,25 +146,25 @@ def main():
     
     try:
         # 启动后端
-        backend_process = start_backend(project_root)
+        backend_process = start_backend(project_root, backend_port)
         processes.append(backend_process)
         
         # 等待后端启动
         time.sleep(2)
         
         # 启动前端
-        frontend_process = start_frontend(project_root)
+        frontend_process = start_frontend(project_root, frontend_port, backend_port)
         processes.append(frontend_process)
         
         print("\n✅ 服务启动成功！")
         print("\n访问地址：")
-        print("  前端页面: http://localhost:8765/index.html")
-        print("  后端API:  http://localhost:8000")
+        print(f"  前端页面: http://localhost:{frontend_port}/index.html")
+        print(f"  后端API:  http://localhost:{backend_port}")
         
         # 尝试自动打开浏览器
         try:
             time.sleep(1)
-            webbrowser.open("http://localhost:8765/index.html")
+            webbrowser.open(f"http://localhost:{frontend_port}/index.html")
             print("\n🌐 已自动打开浏览器")
         except:
             pass
