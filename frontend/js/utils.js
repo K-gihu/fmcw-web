@@ -1,4 +1,14 @@
-const API_BASE = 'http://localhost:8000';
+// 从环境配置或 HTML 中的 meta 标签读取 API 地址
+function getApiBase() {
+    const meta = document.querySelector('meta[name="fmcw-api-base"]');
+    if (meta) {
+        return meta.content;
+    }
+    // 尝试从与前端相同的主机名，但不同的端口（默认 8000）
+    const hostname = window.location.hostname;
+    return `http://${hostname}:8000`;
+}
+const API_BASE = getApiBase();
 let backendAvailable = false;
 
 async function checkBackend() {
