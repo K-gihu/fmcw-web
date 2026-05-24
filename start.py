@@ -13,11 +13,30 @@ import signal
 import webbrowser
 import argparse
 import re
+import socket
 
 
 def get_project_root():
     """获取项目根目录"""
     return os.path.dirname(os.path.abspath(__file__))
+
+
+def is_port_available(port):
+    """检查端口是否可用"""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("0.0.0.0", port))
+            return True
+        except OSError:
+            return False
+
+
+def find_available_port(start_port):
+    """从 start_port 开始寻找下一个可用端口"""
+    for port in range(start_port, start_port + 100):
+        if is_port_available(port):
+            return port
+    raise RuntimeError(f"无法找到可用端口（起始端口: {start_port}）")
 
 
 def check_python():
@@ -110,12 +129,22 @@ def main():
     
     # 解析命令行参数
     parser = argparse.ArgumentParser(description="FMCW Radar Interactive Lab 启动脚本")
-    parser.add_argument("--backend-port", type=int, default=8000, help="后端服务端口 (默认: 8000)")
-    parser.add_argument("--frontend-port", type=int, default=8765, help="前端服务端口 (默认: 8765)")
+    parser.add_argument("--backend-port", type=int, help="后端服务端口 (默认: 自动选择可用端口)")
+    parser.add_argument("--frontend-port", type=int, help="前端服务端口 (默认: 自动选择可用端口)")
     args = parser.parse_args()
     
-    backend_port = args.backend_port
-    frontend_port = args.frontend_port
+    # 确定端口
+    if args.backend_port is not None:
+        backend_port = args.backend_port
+    else:
+        backend_port = find_available_port(8000)
+        print(f"ℹ️  自动选择可用后端端口: {backend_port}")
+    
+    if args.frontend_port is not None:
+        frontend_port = args.frontend_port
+    else:
+        frontend_port = find_available_port(8765)
+        print(f"ℹ️  自动选择可用前端端口: {frontend_port}")
     
     # 安装依赖
     install_dependencies(project_root)
