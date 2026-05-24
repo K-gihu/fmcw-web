@@ -11,6 +11,7 @@ FMCW雷达原理交互式学习应用 - 优化版本
 | 后端框架 | FastAPI | 高性能、异步支持、自动API文档 |
 | 科学计算 | NumPy | 成熟稳定、科学计算生态完善 |
 | 实时通信 | WebSocket | 低延迟、双向通信 |
+| 依赖管理 | Poetry | 现代化依赖管理、虚拟环境一体化 |
 
 ### 前端技术栈
 
@@ -24,7 +25,8 @@ FMCW雷达原理交互式学习应用 - 优化版本
 
 ### 环境要求
 
-- Python 3.7+
+- Python 3.12+
+- Poetry
 - Node.js 16+
 
 ### 启动方式
@@ -50,9 +52,8 @@ python start_v2.py --backend-port 8001 --frontend-port 3001
 ##### 后端
 
 ```bash
-cd backend
-pip install -r requirements.txt
-python main.py
+poetry install
+poetry run python backend/main.py
 ```
 
 ##### 前端
@@ -78,8 +79,7 @@ npm run dev
 ```
 /workspace/
 ├── backend/              # 后端代码
-│   ├── main.py           # FastAPI后端 (v2.0)
-│   └── requirements.txt  # 依赖
+│   └── main.py           # FastAPI后端 (v2.0)
 ├── frontend/           # 旧版前端 (保留)
 ├── frontend-react/  # 新版前端
 │   ├── src/
@@ -91,7 +91,9 @@ npm run dev
 │   ├── vite.config.js
 │   └── package.json
 ├── start.py           # 旧版启动脚本
-└── start_v2.py      # 新版启动脚本
+├── start_v2.py      # 新版启动脚本
+├── pyproject.toml    # Poetry配置
+└── poetry.lock      # Poetry锁定文件
 ```
 
 ## 📊 API 文档
