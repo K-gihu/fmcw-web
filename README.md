@@ -1,6 +1,6 @@
-# FMCW Radar Interactive Lab v2.0
+# FMCW Radar Interactive Lab
 
-FMCW雷达原理交互式学习应用 - 优化版本
+FMCW雷达原理交互式学习应用
 
 ## 🎯 技术选型
 
@@ -64,36 +64,37 @@ npm install
 npm run dev
 ```
 
-## ✨ 新功能
+## ✨ 功能模块
 
-### v2.0 改进
-
-- ✅ WebSocket实时通信
-- ✅ React组件化架构
-- ✅ ECharts专业可视化
-- ✅ NumPy向量化优化
-- ✅ 性能优化
+| 模块 | 功能 |
+|------|------|
+| 基础原理 | Chirp波形可视化、核心公式展示、系统框图 |
+| 距离测量 | 目标配置、Range-FFT、性能指标计算 |
+| 速度与2D-FFT | 帧结构参数、Range-Doppler Map、多普勒原理 |
+| 角度测量 | ULA天线几何、Angle-FFT、测角公式 |
+| 参数设计器 | 系统约束输入、自动参数推荐、敏感性分析 |
+| 综合仿真 | 多目标场景配置、三重视图（距离/速度/角度谱） |
 
 ## 📁 项目结构
 
 ```
-/workspace/
+/
 ├── backend/              # 后端代码
-│   └── main.py           # FastAPI后端 (v2.0)
-├── frontend/           # 旧版前端 (保留)
-├── frontend-react/  # 新版前端
+│   └── main.py           # FastAPI后端
+├── frontend-react/       # React前端
 │   ├── src/
-│   │   ├── components/  # 图表组件
-│   │   ├── services/    # API和WebSocket服务
-│   │   ├── App.jsx      # 主应用
-│   │   └── main.jsx     # 入口
+│   │   ├── components/   # 组件目录
+│   │   ├── services/     # API和WebSocket服务
+│   │   ├── styles/       # 样式文件
+│   │   ├── utils/        # 工具函数
+│   │   ├── App.jsx       # 主应用组件
+│   │   └── main.jsx      # 入口文件
 │   ├── index.html
 │   ├── vite.config.js
 │   └── package.json
-├── start.py           # 旧版启动脚本
-├── start_v2.py      # 新版启动脚本
-├── pyproject.toml    # Poetry配置
-└── poetry.lock      # Poetry锁定文件
+├── start_v2.py           # 启动脚本
+├── pyproject.toml        # Poetry配置
+└── poetry.lock           # Poetry锁定文件
 ```
 
 ## 📊 API 文档
@@ -110,7 +111,7 @@ npm run dev
 
 ### WebSocket
 
-连接: `ws://localhost:8000/ws/simulation
+连接: `ws://localhost:8000/ws/simulation`
 
 消息格式:
 ```json
@@ -119,7 +120,10 @@ npm run dev
   "targets": [...],
   "fc": 77,
   "B": 4,
-  ...
+  "Tc": 40,
+  "Nc": 64,
+  "Nrx": 4,
+  "noise": 0.15
 }
 ```
 
