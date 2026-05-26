@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 const AngleFFTChart = ({ data, targets }) => {
-  const getOption = () => {
+  const option = useMemo(() => {
     if (!data || !data.angles || !data.magnitudes) {
       return {
         title: { text: '等待数据...', left: 'center', textStyle: { color: '#8a97c7' } },
@@ -75,15 +75,15 @@ const AngleFFTChart = ({ data, targets }) => {
         },
       ],
     };
-  };
+  }, [data, targets]);
 
   return (
     <ReactECharts
-      option={getOption()}
+      option={option}
       style={{ height: '100%', width: '100%' }}
       opts={{ renderer: 'canvas' }}
     />
   );
 };
 
-export default AngleFFTChart;
+export default React.memo(AngleFFTChart);

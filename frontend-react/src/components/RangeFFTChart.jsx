@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 const RangeFFTChart = ({ data, targets }) => {
-  const getOption = () => {
+  const option = useMemo(() => {
     if (!data || !data.ranges || !data.magnitudes) {
       return {
         title: { text: '等待数据...', left: 'center', textStyle: { color: '#8a97c7' } },
@@ -80,15 +80,15 @@ const RangeFFTChart = ({ data, targets }) => {
         },
       ],
     };
-  };
+  }, [data, targets]);
 
   return (
     <ReactECharts
-      option={getOption()}
+      option={option}
       style={{ height: '100%', width: '100%' }}
       opts={{ renderer: 'canvas' }}
     />
   );
 };
 
-export default RangeFFTChart;
+export default React.memo(RangeFFTChart);

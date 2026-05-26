@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 
 const RangeDopplerChart = ({ data }) => {
-  const getOption = () => {
+  const option = useMemo(() => {
     if (!data || !data.ranges || !data.velocities || !data.spectrum) {
       return {
         title: { text: '等待数据...', left: 'center', textStyle: { color: '#8a97c7' } },
         backgroundColor: '#060b1c',
       };
     }
+
+    const yLabels = data.ranges.map(r => r.toFixed(1));
+    const xLabels = data.velocities.map(v => v.toFixed(1));
 
     return {
       backgroundColor: '#060b1c',
@@ -23,29 +26,43 @@ const RangeDopplerChart = ({ data }) => {
         borderColor: '#253163',
         textStyle: { color: '#e6ecff' },
         formatter: (params) => {
-          return `速度: ${params.value[0].toFixed(2)} m/s<br/>距离: ${params.value[1].toFixed(2)} m<br/>强度: ${params.value[2].toFixed(2)}`;
+          const xIdx = params.value[0];
+          const yIdx = params.value[1];
+          const vel = data.velocities[xIdx]?.toFixed(2) || 'N/A';
+          const rng = data.ranges[yIdx]?.toFixed(2) || 'N/A';
+          return `速度: ${vel} m/s<br/>距离: ${rng} m<br/>强度: ${params.value[2]?.toFixed(2)}`;
         },
       },
       grid: {
         left: '10%',
         right: '10%',
-        bottom: '15%',
+        bottom: '20%',
         top: '15%',
       },
       xAxis: {
-        type: 'value',
+        type: 'category',
         name: '速度 (m/s)',
         nameTextStyle: { color: '#8a97c7' },
+        data: xLabels,
         axisLine: { lineStyle: { color: '#253163' } },
-        axisLabel: { color: '#8a97c7' },
-        splitLine: { lineStyle: { color: '#253163', type: 'dashed' } },
+        axisLabel: { 
+          color: '#8a97c7',
+          interval: Math.floor(xLabels.length / 5),
+        },
+        splitLine: { show: false },
+      },
       yAxis: {
-        type: 'value',
+        type: 'category',
         name: '距离 (m)',
         nameTextStyle: { color: '#8a97c7' },
+        data: yLabels,
         axisLine: { lineStyle: { color: '#253163' } },
-        axisLabel: { color: '#8a97c7' },
-        splitLine: { lineStyle: { color: '#253163', type: 'dashed' } },
+        axisLabel: { 
+          color: '#8a97c7',
+          interval: Math.floor(yLabels.length / 5),
+        },
+        splitLine: { show: false },
+      },
       visualMap: {
         min: 0,
         max: Math.max(...data.spectrum.flat()),
@@ -63,7 +80,7 @@ const RangeDopplerChart = ({ data }) => {
           name: '强度',
           type: 'heatmap',
           data: data.spectrum.flatMap((row, yi) =>
-            row.map((val, xi) => [data.velocities[xi], data.ranges[yi], val])
+            row.map((val, xi) => [xi, yi, val])
           ),
           label: { show: false },
           emphasis: {
@@ -75,15 +92,15 @@ const RangeDopplerChart = ({ data }) => {
         },
       ],
     };
-  };
+  }, [data]);
 
   return (
     <ReactECharts
-      option={getOption()}
+      option={option}
       style={{ height: '100%', width: '100%' }}
       opts={{ renderer: 'canvas' }}
     />
   );
 };
 
-export default RangeDopplerChart;
+export default React.memo(RangeDopplerChart);
