@@ -1,2 +1,56 @@
-.venv
-.trae
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Poetry
+poetry.lock
+
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+
+# Vite build output
+frontend-react/dist/
+frontend-react/.vite/
+
+# Editor directories
+.trae/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+.tox/
+
+# Temporary files
+tmp_*.png
+*.tmp
+
+# Build artifacts
+*.egg-info/
+build/
+dist/
