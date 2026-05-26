@@ -29,6 +29,15 @@ def is_port_available(port):
         except OSError:
             return False
 
+def find_available_port(start_port, max_port=65535):
+    """从指定端口开始查找第一个可用端口"""
+    port = start_port
+    while port <= max_port:
+        if is_port_available(port):
+            return port
+        port += 1
+    raise Exception(f"无法找到可用端口（从 {start_port} 到 {max_port} 都被占用）")
+
 def check_python():
     """检查 Python 版本"""
     if sys.version_info < (3, 7):
@@ -36,26 +45,24 @@ def check_python():
         sys.exit(1)
 
 def install_backend_deps(project_root):
-    """安装后端依赖"""
-    print("📦 检查并安装后端依赖...")
-    requirements_path = os.path.join(project_root, "backend", "requirements.txt")
-
-    if not os.path.exists(requirements_path):
-        print(f"❌ 错误: 未找到依赖文件 {requirements_path}")
-        sys.exit(1)
-
+    """检查后端依赖（使用 Poetry 管理）"""
+    print("📦 检查后端依赖...")
     try:
         subprocess.check_call([
-            sys.executable, "-m", "pip", "install", "-q", "-r", requirements_path
-        ])
-        print("✅ 后端依赖安装完成")
+            "poetry", "install", "-q"
+        ], cwd=project_root)
+        print("✅ 后端依赖检查完成")
     except subprocess.CalledProcessError:
         print("⚠️  后端依赖安装可能不完整，但继续尝试启动")
 
 def check_node():
     """检查 Node.js 是否安装"""
+    import shutil
+    node_path = shutil.which("node")
+    if not node_path:
+        return False
     try:
-        subprocess.check_output(["node", "--version"])
+        subprocess.check_output([node_path, "--version"], stderr=subprocess.DEVNULL)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -71,10 +78,16 @@ def install_frontend_deps(project_root):
 
     try:
         if not os.path.exists(os.path.join(frontend_dir, "node_modules")):
-            subprocess.check_call(
-                ["npm", "install"],
-                cwd=frontend_dir
-            )
+            if sys.platform == "win32":
+                subprocess.check_call(
+                    ["cmd", "/c", "npm", "install"],
+                    cwd=frontend_dir
+                )
+            else:
+                subprocess.check_call(
+                    ["npm", "install"],
+                    cwd=frontend_dir
+                )
         print("✅ 前端依赖安装完成")
     except subprocess.CalledProcessError:
         print("⚠️  前端依赖安装可能不完整，但继续尝试启动")
@@ -93,7 +106,7 @@ def start_backend(project_root, backend_port):
     env["FMCW_BACKEND_PORT"] = str(backend_port)
 
     return subprocess.Popen([
-        sys.executable, main_py
+        "poetry", "run", "python", main_py
     ], cwd=backend_dir, env=env)
 
 def start_frontend(project_root, frontend_port):
@@ -108,9 +121,14 @@ def start_frontend(project_root, frontend_port):
     env = os.environ.copy()
     env["PORT"] = str(frontend_port)
 
-    return subprocess.Popen([
-        "npm", "run", "dev"
-    ], cwd=frontend_dir, env=env)
+    if sys.platform == "win32":
+        return subprocess.Popen([
+            "cmd", "/c", "npm", "run", "dev"
+        ], cwd=frontend_dir, env=env)
+    else:
+        return subprocess.Popen([
+            "npm", "run", "dev"
+        ], cwd=frontend_dir, env=env)
 
 def main():
     print("=" * 60)
@@ -128,6 +146,18 @@ def main():
     os.chdir(project_root)
 
     check_python()
+
+    if not args.no_backend:
+        if not is_port_available(args.backend_port):
+            print(f"⚠️  端口 {args.backend_port} 已被占用，自动查找可用端口...")
+            args.backend_port = find_available_port(args.backend_port)
+            print(f"✅ 找到可用端口: {args.backend_port}")
+
+    if not args.no_frontend:
+        if not is_port_available(args.frontend_port):
+            print(f"⚠️  端口 {args.frontend_port} 已被占用，自动查找可用端口...")
+            args.frontend_port = find_available_port(args.frontend_port)
+            print(f"✅ 找到可用端口: {args.frontend_port}")
 
     processes = []
 
